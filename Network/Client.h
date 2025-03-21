@@ -47,7 +47,7 @@ private:
 	KGThread m_NetworkThread;
 	NetworkConfig m_Config;
 	LoopTimer m_NetworkThreadTimer;
-	PassiveLoopTimer m_SyncTimer;
+	PassiveLoopTimer m_KeepTimer;
 
 	// Server connection
 	Connection m_ServerConnection;

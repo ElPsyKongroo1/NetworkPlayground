@@ -9,6 +9,7 @@ bool Socket::Open(unsigned short port)
 	// Ensure the socket is created
 	if (handle == -1)
 	{
+		// TODO: This call is windows specific
 		TSLogger::Log("Failed to create a socket: %d\n", WSAGetLastError());
 		return false;
 	}

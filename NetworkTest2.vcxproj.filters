@@ -86,5 +86,8 @@
     <ClInclude Include="Util\PassiveLoopTimer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Util\BitField.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

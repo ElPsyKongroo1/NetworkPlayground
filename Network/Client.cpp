@@ -32,7 +32,7 @@ bool Client::InitClient(const NetworkConfig& initConfig)
     
     // Start network thread
     m_NetworkThreadTimer.InitializeTimer();
-    m_SyncTimer.InitializeTimer(m_Config.m_SyncPingFrequency);
+    m_KeepTimer.InitializeTimer(m_Config.m_SyncPingFrequency);
     m_NetworkThread.StartThread(KG_BIND_CLASS_FN(RunNetworkThread));
 
     return true;
@@ -52,13 +52,13 @@ bool Client::TerminateClient()
 void Client::InitializeServerConnection()
 {
     m_ServerConnection.m_Address = m_Config.m_ServerAddress;
-    m_ServerConnection.m_LastPacketReceived = 0.0f;
+    m_ServerConnection.m_ReliabilityContext.ResetLastPacketReceived();
 }
 
 void Client::TerminateServerConnection()
 {
     m_ServerConnection.m_Address = Address();
-    m_ServerConnection.m_LastPacketReceived = 0.0f;
+    m_ServerConnection.m_ReliabilityContext.ResetLastPacketReceived();
 }
 
 void Client::RunMainThread()
@@ -105,29 +105,43 @@ void Client::RunNetworkThread()
     }
 
     // Handle sync pings
-    if (m_SyncTimer.CheckForUpdate(m_NetworkThreadTimer.GetConstantFrameTime()))
+    if (m_KeepTimer.CheckForUpdate(m_NetworkThreadTimer.GetConstantFrameTime()))
     {
-        // Send synchronization pings
-        SendToServer(PacketType::KeepAlive, nullptr, 0);
-
+        if (m_ServerConnection.m_ReliabilityContext.IsCongested())
+        {
+            static uint32_t s_CongestionCounter{ 0 };
+            if (s_CongestionCounter % 3 == 0)
+            {
+                // Send synchronization pings
+                SendToServer(PacketType::KeepAlive, nullptr, 0);
+            }
+            s_CongestionCounter++;
+        }
+        else
+        {
+            SendToServer(PacketType::KeepAlive, nullptr, 0);
+        }
     }
 
     // Increment time since last sync ping for server connection
-    m_ServerConnection.m_LastPacketReceived += m_NetworkThreadTimer.GetConstantFrameTimeFloat();
-    if (m_ServerConnection.m_LastPacketReceived > m_Config.m_ConnectionTimeout)
+    m_ServerConnection.m_ReliabilityContext.UpdateLastPacketReceived(m_NetworkThreadTimer.GetConstantFrameTimeFloat());
+    if (m_ServerConnection.m_ReliabilityContext.GetLastPacketReceived() > m_Config.m_ConnectionTimeout)
     {
         TerminateServerConnection();
         m_NetworkThread.StopThread(true);
         TSLogger::Log("Connection closed\n");
         return;
     }
+
+    // Update congestion state
+    m_ServerConnection.m_ReliabilityContext.UpdateTimeInCongestionState(m_NetworkThreadTimer.GetConstantFrameTimeFloat());
     
 
     Address sender;
     unsigned char buffer[k_MaxPacketSize];
     int bytes_read = m_ClientSocket.Receive(sender, buffer, sizeof(buffer));
 
-    if (bytes_read >= (sizeof(AppID) + sizeof(PacketType)))
+    if (bytes_read >= k_PacketHeaderSize)
     {
         // Check for a valid app ID
         if (*(AppID*)&buffer != m_Config.m_AppProtocolID)
@@ -135,28 +149,28 @@ void Client::RunNetworkThread()
             TSLogger::Log("Failed to validate the app ID from packet\n");
             return;
         }
+
+        // Process reliability segment
+        m_ServerConnection.m_ReliabilityContext.ProcessReliabilitySegmentFromPacket(&buffer[sizeof(AppID)]);
         
-        PacketType type = (PacketType)buffer[sizeof(AppID)];
+        PacketType type = (PacketType)buffer[sizeof(AppID) + k_ReliabilitySegmentSize];
 
         switch (type)
         {
         case PacketType::KeepAlive:
-            //TSLogger::Log("Received keep alive packet\n");
-            m_ServerConnection.m_LastPacketReceived = 0.0f;
             return;
         case PacketType::Message:
         {
-            bool valid = isValidCString((char*)buffer + sizeof(AppID) + sizeof(PacketType));
+            bool valid = isValidCString((char*)buffer + k_PacketHeaderSize);
             if (!valid)
             {
                 TSLogger::Log("Buffer could not be converted into a c-string\n");
                 return;
             }
 
-            TSLogger::Log("\n");
             TSLogger::Log("[%i.%i.%i.%i:%i]: ", sender.GetA(), sender.GetB(),
                 sender.GetC(), sender.GetD(), sender.GetPort());
-            TSLogger::Log("%s", buffer + sizeof(AppID) + sizeof(PacketType));
+            TSLogger::Log("%s", buffer + k_PacketHeaderSize);
             TSLogger::Log("\n");
             break;
         }
@@ -197,8 +211,8 @@ bool Client::RequestConnection()
         }
 
         // Increment time since start of connection attempt
-        m_ServerConnection.m_LastPacketReceived += loopTimer.GetConstantFrameTimeFloat();
-        if (m_ServerConnection.m_LastPacketReceived > m_Config.m_ConnectionTimeout)
+        m_ServerConnection.m_ReliabilityContext.UpdateLastPacketReceived(loopTimer.GetConstantFrameTimeFloat());
+        if (m_ServerConnection.m_ReliabilityContext.GetLastPacketReceived() > m_Config.m_ConnectionTimeout)
         {
             return false;
         }
@@ -207,7 +221,7 @@ bool Client::RequestConnection()
         unsigned char buffer[k_MaxPacketSize];
         int bytes_read = m_ClientSocket.Receive(sender, buffer, sizeof(buffer));
 
-        if (bytes_read >= (sizeof(AppID) + sizeof(PacketType)))
+        if (bytes_read >= k_PacketHeaderSize)
         {
             // Check for a valid app ID
             if (*(AppID*)&buffer != m_Config.m_AppProtocolID)
@@ -216,7 +230,11 @@ bool Client::RequestConnection()
                 continue;
             }
 
-            PacketType type = (PacketType)buffer[sizeof(AppID)];
+            // Process reliability segment
+            m_ServerConnection.m_ReliabilityContext.ProcessReliabilitySegmentFromPacket(&buffer[sizeof(AppID)]);
+
+            // Get packet type
+            PacketType type = (PacketType)buffer[sizeof(AppID) + k_ReliabilitySegmentSize];
 
             if (type == PacketType::ConnectionSuccess)
             {
@@ -247,19 +265,22 @@ bool Client::SendToServer(PacketType type, const void* payload, int payloadSize)
    AppID& appIDLocation = *(AppID*)&buffer[0];
    appIDLocation = m_Config.m_AppProtocolID;
 
+   // Set reliability segment
+   m_ServerConnection.m_ReliabilityContext.InsertReliabilitySegmentIntoPacket(&buffer[sizeof(AppID)]);
+
    // Set the packet type
-   PacketType& packetTypeLocation = *(PacketType*)&buffer[sizeof(AppID)];
+   PacketType& packetTypeLocation = *(PacketType*)&buffer[sizeof(AppID) + k_ReliabilitySegmentSize];
    packetTypeLocation = type;
 
    if (payloadSize > 0)
    {
        // Set the payload data
-       memcpy(&buffer[sizeof(AppID) + sizeof(PacketType)], payload, payloadSize);
+       memcpy(&buffer[k_PacketHeaderSize], payload, payloadSize);
    }
 
    // Send the message
    bool sendSuccess{ false };
-   sendSuccess = m_ClientSocket.Send(m_ServerConnection.m_Address, buffer, payloadSize + sizeof(AppID) + sizeof(PacketType));
+   sendSuccess = m_ClientSocket.Send(m_ServerConnection.m_Address, buffer, payloadSize + k_PacketHeaderSize);
 
    return sendSuccess;
 }

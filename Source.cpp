@@ -100,17 +100,22 @@ static bool OpenClient(const NetworkConfig& config)
 
 int main(int argc, char* argv[])
 {
+    // Handle command line arguments
     std::optional<AppType> appTypeRef = HandleCMDArguments(argc, argv);
     if (!appTypeRef)
     {
         TSLogger::Log("Retrieve app type from command line arguments");
         return false;
     }
+
+    // Set up config information
     NetworkConfig config;
     config.m_ServerAddress.SetAddress(127, 0, 0, 1);
     config.m_ServerAddress.SetNewPort(3'000);
-    config.m_AppProtocolID = 645356;
+    config.m_AppProtocolID = 201;
 
+
+    // Open either the server or the client
     if (*appTypeRef == AppType::Server)
     {
         return !OpenServer(config);

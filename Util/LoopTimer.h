@@ -13,7 +13,9 @@ public:
 	//==============================
 	// Lifecycle Functions
 	//==============================
+	// Reset the timer
 	void InitializeTimer();
+	// Move the timer context forward
 	bool CheckForUpdate();
 
 	//==============================

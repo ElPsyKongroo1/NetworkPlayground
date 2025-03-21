@@ -33,7 +33,7 @@ public:
 	//==============================
 	// Send Packets
 	//==============================
-	bool SendToConnection(Address connectionAddress, PacketType type, const void* data, int size);
+	bool SendToConnection(Connection* connection, PacketType type, const void* data, int size);
 	bool SendToAllConnections(PacketType type, const void* data, int size);
 private:
 	//==============================
@@ -43,7 +43,7 @@ private:
 	NetworkConfig m_Config;
 	KGThread m_NetworkThread;
 	LoopTimer m_NetworkThreadTimer;
-	PassiveLoopTimer m_SyncTimer;
+	PassiveLoopTimer m_KeepTimer;
 
 	ConnectionMap m_AllConnections;
 };

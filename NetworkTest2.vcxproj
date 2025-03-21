@@ -168,6 +168,7 @@
     <ClInclude Include="Posix\Common.h" />
     <ClInclude Include="Posix\Connection.h" />
     <ClInclude Include="Posix\Socket.h" />
+    <ClInclude Include="Util\BitField.h" />
     <ClInclude Include="Util\Helper.h" />
     <ClInclude Include="Util\Logger.h" />
     <ClInclude Include="Util\LoopTimer.h" />

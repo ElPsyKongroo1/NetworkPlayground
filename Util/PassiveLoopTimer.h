@@ -13,8 +13,10 @@ public:
 	//==============================
 	// Lifecycle Functions
 	//==============================
+	// Reset the timer
 	void InitializeTimer(std::chrono::nanoseconds updateDelta);
 	void InitializeTimer(float updateDeltaSeconds);
+	// Move the timer forward
 	bool CheckForUpdate(std::chrono::nanoseconds timestep);
 
 	//==============================
