@@ -45,12 +45,18 @@
     <ClCompile Include="Util\PassiveLoopTimer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Posix\ReliabilityContext.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Util\EventQueue.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Posix\Socket.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Posix\Common.h">
+    <ClInclude Include="Posix\PosixImpl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Util\Logger.h">
@@ -87,6 +93,21 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Util\BitField.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Network\NetworkCommon.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Posix\ReliabilityContext.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Util\EventQueue.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Util\Event.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Util\Base.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

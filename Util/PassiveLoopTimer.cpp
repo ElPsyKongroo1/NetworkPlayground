@@ -2,15 +2,20 @@
 
 void PassiveLoopTimer::InitializeTimer(std::chrono::nanoseconds updateDelta)
 {
-	using namespace std::chrono_literals;
-
-	m_Accumulator = 0ns;
 	m_UpdateDelta = updateDelta;
+	InitializeTimer();
 }
 
 void PassiveLoopTimer::InitializeTimer(float updateDeltaSeconds)
 {
 	InitializeTimer(std::chrono::nanoseconds((long long)(updateDeltaSeconds * 1'000'000'000)));
+}
+
+void PassiveLoopTimer::InitializeTimer()
+{
+	using namespace std::chrono_literals;
+
+	m_Accumulator = 0ns;
 }
 
 bool PassiveLoopTimer::CheckForUpdate(std::chrono::nanoseconds timestep)

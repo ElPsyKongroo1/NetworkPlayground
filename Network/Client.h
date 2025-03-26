@@ -6,6 +6,31 @@
 #include "../Posix/Connection.h"
 #include "../Util/LoopTimer.h"
 #include "../Util/PassiveLoopTimer.h"
+#include "../Util/EventQueue.h"
+
+enum ConnectionStatus : uint8_t
+{
+	Disconnected,
+	Connecting,
+	Connected
+};
+
+class ConnectionToServer
+{
+public:
+	//==============================
+	// Lifecycle Functions
+	//==============================
+	void Init(const NetworkConfig& config);
+	void Terminate();
+public:
+	//==============================
+	// Public Fields
+	//==============================
+	Connection m_Connection{};
+	ClientIndex m_ClientIndex{};
+	ConnectionStatus m_Status{ Disconnected };
+};
 
 class Client
 {
@@ -22,19 +47,33 @@ public:
 	bool InitClient(const NetworkConfig& initConfig);
 	bool TerminateClient();
 
+	// Allows other threads to wait on the client to close
+	void WaitOnClientTerminate();
+
+	//==============================
+	// On Event
+	//==============================
+	void OnEvent(Event* event);
+
+	//==============================
+	// Manage Events
+	//==============================
+	void SubmitEvent(Ref<Event> event);
 private:
-	void InitializeServerConnection();
-	void TerminateServerConnection();
-	bool RequestConnection();
+	// Manage the server connection
+	void RequestConnection();
 public:
 	//==============================
 	// Run Threads
 	//==============================
-	// Run regular Client thread
-	void RunMainThread();
 	// Run socket/packet handling thread
 	void RunNetworkThread();
+	void RunNetworkEventThread();
 
+private:
+	// Helper functions
+	bool HandleConsoleInput(KeyPressedEvent event);
+public:
 	//==============================
 	// Send Packets
 	//==============================
@@ -45,11 +84,14 @@ private:
 	//==============================
 	Socket m_ClientSocket;
 	KGThread m_NetworkThread;
+	KGThread m_NetworkEventThread;
 	NetworkConfig m_Config;
 	LoopTimer m_NetworkThreadTimer;
-	PassiveLoopTimer m_KeepTimer;
+	PassiveLoopTimer m_RequestConnectionTimer;
+	PassiveLoopTimer m_KeepAliveTimer;
+	EventQueue m_NetworkEventQueue;
 
 	// Server connection
-	Connection m_ServerConnection;
+	ConnectionToServer m_ServerConnection;
 	
 };

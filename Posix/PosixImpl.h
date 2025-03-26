@@ -28,8 +28,9 @@
 #include <fcntl.h>
 #endif
 
-// TODO: Link the winsock library in the actual engine plz
+// TODO: Link the winsock library in the actual engine plz TODO TODO TODO
 #if PLATFORM == PLATFORM_WINDOWS
 #pragma comment( lib, "wsock32.lib" )
+#pragma comment ( lib, "Ws2_32.lib" )
 #endif
 

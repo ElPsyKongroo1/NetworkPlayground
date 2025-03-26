@@ -1,4 +1,5 @@
 #include "Thread.h"
+#include "../Util/Logger.h"
 
 void KGThread::StartThread(std::function<void()> workFunction)
 {
@@ -9,16 +10,15 @@ void KGThread::StartThread(std::function<void()> workFunction)
 
 void KGThread::StopThread(bool withinThread)
 {
-	m_ThreadRunning = false;
-
 	if (withinThread)
 	{
+		m_ThreadRunning = false;
 		return;
 	}
 
 	{
 		std::lock_guard<std::mutex> lock(m_BlockThreadMutex);
-		m_ThreadBlocked = false;
+		m_ThreadSuspended = false;
 		m_BlockThreadCV.notify_one();
 	}
 
@@ -30,27 +30,62 @@ void KGThread::RunThread()
 {
 	while (m_ThreadRunning)
 	{
-		std::unique_lock<std::mutex> lock(m_BlockThreadMutex);
-
-		// Handle blocking the thread if necessary
-		if (m_ThreadBlocked)
 		{
-			m_BlockThreadCV.wait(lock);
+			std::unique_lock<std::mutex> lock(m_BlockThreadMutex);
+
+			// Handle blocking the thread if necessary
+			if (m_ThreadSuspended)
+			{
+				m_BlockThreadCV.wait(lock);
+			}
 		}
 		
 		m_WorkFunction();
 	}
 }
 
-void KGThread::BlockThread()
+void KGThread::SuspendThread(bool withinThread)
 {
+	if (withinThread)
+	{
+		m_ThreadSuspended = true;
+		return;
+	}
+
 	std::lock_guard<std::mutex> lock(m_BlockThreadMutex);
-	m_ThreadBlocked = true;
+	m_ThreadSuspended = true;
 }
 
-void KGThread::ResumeThread()
+void KGThread::ResumeThread(bool withinThread)
 {
+	if (withinThread)
+	{
+		m_ThreadSuspended = false;
+		return;
+	}
+
 	std::lock_guard<std::mutex> lock(m_BlockThreadMutex);
-	m_ThreadBlocked = false;
+	m_ThreadSuspended = false;
 	m_BlockThreadCV.notify_one();
+}
+
+void KGThread::WaitOnThread()
+{
+	m_Thread->join();
+}
+
+void KGThread::ChangeWorkFunction(std::function<void()> workFunction)
+{
+	if (m_ThreadRunning)
+	{
+		TSLogger::Log("Failed to change work function. Cannot change function while thread is running.");
+		return;
+	}
+
+	m_WorkFunction = workFunction;
+}
+
+bool KGThread::IsRunning()
+{
+	return m_ThreadRunning;
 }

@@ -153,8 +153,10 @@
     <ClCompile Include="Network\Server.cpp" />
     <ClCompile Include="Posix\Address.cpp" />
     <ClCompile Include="Posix\Connection.cpp" />
+    <ClCompile Include="Posix\ReliabilityContext.cpp" />
     <ClCompile Include="Source.cpp" />
     <ClCompile Include="Posix\Socket.cpp" />
+    <ClCompile Include="Util\EventQueue.cpp" />
     <ClCompile Include="Util\Logger.cpp" />
     <ClCompile Include="Util\LoopTimer.cpp" />
     <ClCompile Include="Util\PassiveLoopTimer.cpp" />
@@ -162,13 +164,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Network\Client.h" />
+    <ClInclude Include="Network\NetworkCommon.h" />
     <ClInclude Include="Network\NetworkConfig.h" />
     <ClInclude Include="Network\Server.h" />
     <ClInclude Include="Posix\Address.h" />
-    <ClInclude Include="Posix\Common.h" />
+    <ClInclude Include="Posix\PosixImpl.h" />
     <ClInclude Include="Posix\Connection.h" />
+    <ClInclude Include="Posix\ReliabilityContext.h" />
     <ClInclude Include="Posix\Socket.h" />
+    <ClInclude Include="Util\Base.h" />
     <ClInclude Include="Util\BitField.h" />
+    <ClInclude Include="Util\Event.h" />
+    <ClInclude Include="Util\EventQueue.h" />
     <ClInclude Include="Util\Helper.h" />
     <ClInclude Include="Util\Logger.h" />
     <ClInclude Include="Util\LoopTimer.h" />

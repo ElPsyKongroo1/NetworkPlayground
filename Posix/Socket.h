@@ -1,41 +1,55 @@
 #pragma once
-#include "Common.h"
+#include "PosixImpl.h"
 #include "Address.h"
 #include "../Util/Logger.h"
 
 class Socket
 {
 public:
+	//==============================
+	// Constructors/Destructors
+	//==============================
 	Socket() = default;
 	~Socket() = default;
 
-
-	bool Open(unsigned short port);
+	//==============================
+	// Lifecycle Functions
+	//==============================
+	bool Open(unsigned short m_Port);
 	void Close();
-	bool IsOpen() const;
+
+	//==============================
+	// Send/Receive Messages
+	//==============================
 	bool Send(const Address& destination, const void* data, int size);
 	int Receive(Address& sender, void* data, int size);
+
+	//==============================
+	// Query Socket State
+	//==============================
+	bool IsOpen() const;
+
+	//==============================
+	// Getters/Setters
+	//==============================
+	int GetHandle() const;
 private:
-	int handle;
+	//==============================
+	// Internal Fields
+	//==============================
+	int m_Handle;
 };
 
 //===========================
-// Socket Layer Lifecycle
+// Socket Context
 //===========================
 
-inline bool InitializeSockets()
+class SocketContext 
 {
-#if PLATFORM == PLATFORM_WINDOWS
-	WSADATA WsaData;
-	return WSAStartup(MAKEWORD(2, 2), &WsaData) == NO_ERROR;
-#else
-	return true;
-#endif
-}
-
-inline void ShutdownSockets()
-{
-#if PLATFORM == PLATFORM_WINDOWS
-	WSACleanup();
-#endif
-}
+public:
+	//==============================
+	// Lifecycle Functions
+	//==============================
+	static bool InitializeSockets();
+	static void ShutdownSockets();
+};

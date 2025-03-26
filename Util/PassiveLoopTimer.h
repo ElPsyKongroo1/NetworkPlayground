@@ -16,6 +16,7 @@ public:
 	// Reset the timer
 	void InitializeTimer(std::chrono::nanoseconds updateDelta);
 	void InitializeTimer(float updateDeltaSeconds);
+	void InitializeTimer();
 	// Move the timer forward
 	bool CheckForUpdate(std::chrono::nanoseconds timestep);
 

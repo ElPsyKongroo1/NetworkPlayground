@@ -40,7 +40,7 @@ static std::optional<AppType> HandleCMDArguments(int argc, char* argv[])
 
 #if 0
     char* endptr;
-    int port = (int)std::strtol(argv[2], &endptr, 10);
+    int m_Port = (int)std::strtol(argv[2], &endptr, 10);
 
     if (*endptr != '\0')
     {
@@ -49,7 +49,7 @@ static std::optional<AppType> HandleCMDArguments(int argc, char* argv[])
     }
 
     // Try to select a socket port 1024 (used by other services) < port < 50'000 (usually dynamically reserved)
-    if (port <= 1024 || port >= 50'000)
+    if (m_Port <= 1024 || m_Port >= 50'000)
     {
         TSLogger::Log("Invalid port value provided. Needs to be between 1024-50,000\n");
         return {};
@@ -67,19 +67,16 @@ static bool OpenServer(const NetworkConfig& config)
         return false;
     }
 
-    activeServer.RunMainThread();
+    activeServer.WaitOnServerTerminate();
 
-    if (!activeServer.TerminateServer())
-    {
-        TSLogger::Log("Error occurred while terminating server");
-        return false;
-    }
     return true;
 }
 
 static bool OpenClient(const NetworkConfig& config)
 {
     Client activeClient;
+    LoopTimer loopTimer;
+    loopTimer.InitializeTimer();
 
     if (!activeClient.InitClient(config))
     {
@@ -87,13 +84,15 @@ static bool OpenClient(const NetworkConfig& config)
         return false;
     }
 
-    activeClient.RunMainThread();
-
-    if (!activeClient.TerminateClient())
+    while (true)
     {
-        TSLogger::Log("Error occurred while terminating client");
-        return false;
+        if (loopTimer.CheckForUpdate())
+        {
+            activeClient.SubmitEvent(std::make_shared<AppUpdateEvent>(loopTimer.GetConstantFrameTimeFloat()));
+        }
     }
+
+    activeClient.WaitOnClientTerminate();
 
     return true;
 }

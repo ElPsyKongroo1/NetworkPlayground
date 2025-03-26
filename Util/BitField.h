@@ -1,11 +1,10 @@
 #pragma once
 
+#include "Base.h"
+
 #include <cstdint>
 #include <type_traits>
 #include <limits>
-
-#include <cassert>
-#define KG_ASSERT(cond) assert(cond)
 
 
 //=========================
@@ -36,9 +35,7 @@ public:
 	void ClearFlag(uint8_t flag)
 	{
 		KG_ASSERT(flag < sizeof(DataType) * 8);
-
 		m_Bitfield &= ~(1 << flag);
-
 	}
 	void ToggleFlag(uint8_t flag)
 	{

@@ -1,13 +1,13 @@
 #include "Socket.h"
 #include "stdio.h"
 
-bool Socket::Open(unsigned short port)
+bool Socket::Open(unsigned short m_Port)
 {
 	// Create the UDP socket
-	handle = (int)socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	m_Handle = (int)socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
 	// Ensure the socket is created
-	if (handle == -1)
+	if (m_Handle == -1)
 	{
 		// TODO: This call is windows specific
 		TSLogger::Log("Failed to create a socket: %d\n", WSAGetLastError());
@@ -15,13 +15,13 @@ bool Socket::Open(unsigned short port)
 	}
 
 	// Create the socket's address
-	sockaddr_in address;
-	address.sin_family = AF_INET;
-	address.sin_addr.s_addr = INADDR_ANY;
-	address.sin_port = htons((unsigned short)port);
+	sockaddr_in m_Address;
+	m_Address.sin_family = AF_INET;
+	m_Address.sin_addr.s_addr = INADDR_ANY;
+	m_Address.sin_port = htons((unsigned short)m_Port);
 
 	// Bind the address to the socket
-	if (bind(handle, (const sockaddr*)&address, sizeof(sockaddr_in)) < 0)
+	if (bind(m_Handle, (const sockaddr*)&m_Address, sizeof(sockaddr_in)) < 0)
 	{
 		TSLogger::Log("Failed to bind socket \n");
 		return false;
@@ -30,14 +30,14 @@ bool Socket::Open(unsigned short port)
 	// Set socket to non-blocking mode
 #if PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
 	int nonBlocking = 1;
-	if (fcntl(handle, F_SETFL, O_NONBLOCK, nonBlocking) == -1)
+	if (fcntl(m_Handle, F_SETFL, O_NONBLOCK, nonBlocking) == -1)
 	{
 		TSLogger::Log("Failed to set non-blocking\n");
 		return false;
 	}
 #elif PLATFORM == PLATFORM_WINDOWS
 	DWORD nonBlocking = 1;
-	if (ioctlsocket(handle, FIONBIO, &nonBlocking) != 0)
+	if (ioctlsocket(m_Handle, FIONBIO, &nonBlocking) != 0)
 	{
 		TSLogger::Log("Failed to set non-blocking\n");
 		return false;
@@ -51,9 +51,9 @@ void Socket::Close()
 {
 	// Destroy a socket
 #if PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
-	close(handle);
+	close(m_Handle);
 #elif PLATFORM == PLATFORM_WINDOWS
-	closesocket(handle);
+	closesocket(m_Handle);
 #endif
 }
 
@@ -61,6 +61,11 @@ bool Socket::IsOpen() const
 {
 	TSLogger::Log("IsOpen function is unimplemented");
 	return false;
+}
+
+int Socket::GetHandle() const
+{
+	return m_Handle;
 }
 
 bool Socket::Send(const Address& destination, const void* data, int size)
@@ -72,7 +77,7 @@ bool Socket::Send(const Address& destination, const void* data, int size)
 	destAddress.sin_port = htons(destination.GetPort());
 
 	// Sending a packet to a specific address
-	int sent_bytes = sendto(handle, (const char*)data, size, 0, (sockaddr*)&destAddress, sizeof(sockaddr_in));
+	int sent_bytes = sendto(m_Handle, (const char*)data, size, 0, (sockaddr*)&destAddress, sizeof(sockaddr_in));
 
 	// Note that the return value only indicated whether the packet was sent successfully (not necessarily received)
 	if (sent_bytes != size)
@@ -93,7 +98,7 @@ int Socket::Receive(Address& sender, void* data, int size)
 	sockaddr_in from;
 	socklen_t fromLength = sizeof(from);
 	// Note that any packets larger than the max size are silently discarded!
-	int bytes = recvfrom(handle, (char*)data, size, 0, (sockaddr*)&from, &fromLength);
+	int bytes = recvfrom(m_Handle, (char*)data, size, 0, (sockaddr*)&from, &fromLength);
 
 	if (bytes <= 0)
 	{
@@ -104,4 +109,21 @@ int Socket::Receive(Address& sender, void* data, int size)
 	sender.SetAddress(ntohl(from.sin_addr.s_addr));
 	sender.SetNewPort(ntohs(from.sin_port));
 	return bytes;
+}
+
+bool SocketContext::InitializeSockets()
+{
+#if PLATFORM == PLATFORM_WINDOWS
+	WSADATA WsaData;
+	return WSAStartup(MAKEWORD(2, 2), &WsaData) == NO_ERROR;
+#else
+	return true;
+#endif
+}
+
+void SocketContext::ShutdownSockets()
+{
+#if PLATFORM == PLATFORM_WINDOWS
+	WSACleanup();
+#endif
 }
